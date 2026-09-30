@@ -1,9 +1,10 @@
 import Testing
 import Foundation
+import HeyMacCore
 @testable import HeyMacEngine
 
 private func makeUnlocker(
-    system: FakeSystem, matcher: FakeMatcher, typist: FakeTypist, settings: EngineSettings, recorder: EventRecorder
+    system: FakeSystem, matcher: FakeMatcher, typist: PasswordTyping, settings: EngineSettings, recorder: EventRecorder
 ) -> LockScreenUnlocker {
     LockScreenUnlocker(
         matcher: matcher, typist: typist, settings: settings,
