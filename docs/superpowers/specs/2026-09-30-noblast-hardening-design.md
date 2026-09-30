@@ -121,7 +121,7 @@ L'horloge d'inactivité est injectée dans `LockScreenEnvironment` pour être te
 - Au chargement, `ModelResources` utilise le `.mlmodelc` s'il existe. Sinon il compile le `.mlpackage`, comme
   aujourd'hui (`swift run` et tests).
 - `NoBlastRuntime`, qui charge les modèles, est construit **hors du thread principal** au lancement :
-  - pendant le chargement, le menu affiche « Chargement des modèles… » ;
+  - pendant le chargement, la ligne d'état du menu affiche « loading face models… » (l'interface de l'app est en anglais) ;
   - le moteur de l'écran de session démarre dès que les modèles sont prêts ;
   - si App Lock demande une authentification avant ce moment, la reconnaissance faciale est ignorée et l'app
     passe directement à Touch ID ou au mot de passe (comportement existant quand `faceMatcher` renvoie `nil`).
