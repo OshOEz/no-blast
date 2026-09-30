@@ -27,6 +27,7 @@ private func makeController(settings: EngineSettings, counter: CheckCounter, cen
     let counter = CheckCounter()
     let center = NotificationCenter()
     let controller = makeController(settings: makeTestSettings { $0.lockScreenEnabled = true }, counter: counter, center: center)
+    defer { controller.stop() }
     try controller.start()
     try await Task.sleep(for: .milliseconds(300))
     let afterStart = counter.count
@@ -48,6 +49,7 @@ private func makeController(settings: EngineSettings, counter: CheckCounter, cen
 @Test func anUnfinishedSetupStartsNothing() async throws {
     let counter = CheckCounter()
     let controller = makeController(settings: makeTestSettings { $0.setupComplete = false }, counter: counter, center: NotificationCenter())
+    defer { controller.stop() }
     try controller.start()
     try await Task.sleep(for: .milliseconds(200))
     #expect(!controller.isRunning)
