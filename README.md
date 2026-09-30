@@ -55,7 +55,8 @@ events:
 
 - A program with **Input Monitoring** permission can record it as it is typed.
 - Builds signed ad-hoc (no Developer ID) identify the app by bundle ID only; another local program signed with the
-  same ID could read the Keychain key. Use a signed build, or leave lock-screen unlock off, if that matters to you.
+  same ID could read the Keychain key. Build it yourself after running `scripts/create-signing-identity.sh` (a local
+  signing identity ties the Keychain item to your certificate), or leave lock-screen unlock off, if that matters to you.
 
 ## Uninstall
 
