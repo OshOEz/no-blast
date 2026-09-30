@@ -3,7 +3,7 @@
 # survive app updates), otherwise ad-hoc with an identifier-only designated
 # requirement (weaker; macOS may still reset grants on update).
 
-SIGNING_IDENTITY_NAME="FaceUnlock Local Signing"
+SIGNING_IDENTITY_NAME="No Blast Local Signing"
 
 signing_identity_available() {
     security find-identity -v -p codesigning 2>/dev/null | grep -qF "\"$SIGNING_IDENTITY_NAME\""

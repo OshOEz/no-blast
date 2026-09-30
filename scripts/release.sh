@@ -1,8 +1,8 @@
 #!/bin/bash
 # Builds a release and the Sparkle appcast for it.
 # Usage: scripts/release.sh VERSION [--publish]
-#   Without --publish: builds dist/HeyMac-VERSION.dmg and dist/appcast.xml and stops.
-#   With --publish:    also creates the GitHub release vVERSION with the DMG (versioned and as HeyMac.dmg)
+#   Without --publish: builds dist/NoBlast-VERSION.dmg and dist/appcast.xml and stops.
+#   With --publish:    also creates the GitHub release vVERSION with the DMG (versioned and as NoBlast.dmg)
 #                      and appcast attached, and bumps the Homebrew cask in iharshitmaurya/homebrew-tap, so the README's download button and
 #                      installed copies find the update at releases/latest/download/appcast.xml.
 # The DMG is signed with the private key that `generate_keys` stored in your login Keychain;
@@ -13,9 +13,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 VERSION="${1:?usage: release.sh VERSION [--publish]}"
 PUBLISH="${2:-}"
-REPO="iharshitmaurya/HeyMac"
-DMG="$REPO_ROOT/dist/HeyMac-$VERSION.dmg"
-LATEST_DMG="$REPO_ROOT/dist/HeyMac.dmg" # fixed name, so releases/latest/download/HeyMac.dmg always resolves
+REPO="iharshitmaurya/NoBlast"
+DMG="$REPO_ROOT/dist/NoBlast-$VERSION.dmg"
+LATEST_DMG="$REPO_ROOT/dist/NoBlast.dmg" # fixed name, so releases/latest/download/NoBlast.dmg always resolves
 APPCAST="$REPO_ROOT/dist/appcast.xml"
 SIGN_UPDATE="$REPO_ROOT/.build/artifacts/sparkle/Sparkle/bin/sign_update"
 
@@ -30,14 +30,14 @@ cat > "$APPCAST" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Hey Mac</title>
+    <title>No Blast</title>
     <item>
       <title>Version $VERSION</title>
       <pubDate>$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
       <sparkle:version>$VERSION</sparkle:version>
       <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/$REPO/releases/download/v$VERSION/HeyMac-$VERSION.dmg"
+      <enclosure url="https://github.com/$REPO/releases/download/v$VERSION/NoBlast-$VERSION.dmg"
                  type="application/x-apple-diskimage" $SIGNATURE_ATTRS />
     </item>
   </channel>
@@ -46,17 +46,17 @@ XML
 echo "Wrote $APPCAST"
 
 if [ "$PUBLISH" = "--publish" ]; then
-    gh release create "v$VERSION" "$DMG" "$LATEST_DMG" "$APPCAST" --repo "$REPO" --title "Hey Mac $VERSION" --generate-notes
+    gh release create "v$VERSION" "$DMG" "$LATEST_DMG" "$APPCAST" --repo "$REPO" --title "No Blast $VERSION" --generate-notes
     echo "Published v$VERSION"
 
-    # Point the Homebrew cask at this release, so `brew install --cask iharshitmaurya/tap/heymac` gets it.
+    # Point the Homebrew cask at this release, so `brew install --cask iharshitmaurya/tap/noblast` gets it.
     TAP_DIR="$(mktemp -d)"
     gh repo clone iharshitmaurya/homebrew-tap "$TAP_DIR" -- -q
     SHA256="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
-    sed -i '' -e "s/^  version \".*\"/  version \"$VERSION\"/" -e "s/^  sha256 \".*\"/  sha256 \"$SHA256\"/" "$TAP_DIR/Casks/heymac.rb"
+    sed -i '' -e "s/^  version \".*\"/  version \"$VERSION\"/" -e "s/^  sha256 \".*\"/  sha256 \"$SHA256\"/" "$TAP_DIR/Casks/noblast.rb"
     if ! git -C "$TAP_DIR" diff --quiet; then
         git -C "$TAP_DIR" -c user.name="Harshit Maurya" -c user.email="46915044+iharshitmaurya@users.noreply.github.com" \
-            commit -qam "Update heymac to $VERSION"
+            commit -qam "Update noblast to $VERSION"
         git -C "$TAP_DIR" push -q
         echo "Updated the Homebrew cask to $VERSION"
     fi

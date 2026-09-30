@@ -1,10 +1,10 @@
-Hey Mac — unlock your Mac's lock screen and lock apps with your face, on Apple Silicon Macs.
+No Blast — unlock your Mac's lock screen and lock apps with your face, on Apple Silicon Macs.
 
 INSTALL
-1. Drag Hey Mac into the Applications folder.
+1. Drag No Blast into the Applications folder.
 2. Open it. macOS blocks it the first time because it is not from an identified
    developer: go to System Settings > Privacy & Security, scroll down to the message
-   about Hey Mac, click "Open Anyway", then confirm.
+   about No Blast, click "Open Anyway", then confirm.
 3. The setup window walks through camera access, enrolling your face and turning on the
    features you want.
 
@@ -17,5 +17,5 @@ GOOD TO KNOW
 
 UNINSTALL
 Menu bar icon > Settings… > About > Uninstall…. That removes the app, your face
-data, saved password and settings, and moves Hey Mac to the Trash. (Dragging it to
+data, saved password and settings, and moves No Blast to the Trash. (Dragging it to
 the Trash yourself leaves your face data and settings on this Mac.)

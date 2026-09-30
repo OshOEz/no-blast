@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.heymac.app</string>
+	<string>io.oshoez.noblast</string>
 	<key>CFBundleName</key>
-	<string>Hey Mac</string>
+	<string>No Blast</string>
 	<key>CFBundleDisplayName</key>
-	<string>Hey Mac</string>
+	<string>No Blast</string>
 	<key>CFBundleExecutable</key>
-	<string>HeyMac</string>
+	<string>NoBlast</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -23,14 +23,14 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://github.com/iharshitmaurya/HeyMac/releases/latest/download/appcast.xml</string>
+	<string>https://github.com/iharshitmaurya/NoBlast/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>0w5Lm33NoVePIpJVgH8Wl3nX+kniFhj7Gv4Robk7+o0=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Hey Mac uses the camera to recognize your face for lock-screen unlock and App Lock. Images never leave this Mac.</string>
+	<string>No Blast uses the camera to recognize your face for lock-screen unlock and App Lock. Images never leave this Mac.</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026 Harshit Maurya. MIT License.</string>
+	<string>Copyright © 2026 Harshit Maurya, OshOEz. MIT License.</string>
 </dict>
 </plist>

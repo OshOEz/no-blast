@@ -2,31 +2,31 @@
 import PackageDescription
 
 let package = Package(
-    name: "HeyMac",
+    name: "NoBlast",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "HeyMac", targets: ["HeyMacApp"]),
+        .executable(name: "NoBlast", targets: ["NoBlastApp"]),
     ],
     dependencies: [
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
     ],
     targets: [
         .target(
-            name: "HeyMacCore",
+            name: "NoBlastCore",
             resources: [
                 .copy("Resources/ArcFace.mlpkgdata"),
                 .copy("Resources/AntiSpoof.mlpkgdata"),
             ]
         ),
         .target(
-            name: "HeyMacEngine",
-            dependencies: ["HeyMacCore"],
+            name: "NoBlastEngine",
+            dependencies: ["NoBlastCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(
-            name: "HeyMacApp",
+            name: "NoBlastApp",
             dependencies: [
-                "HeyMacCore", "HeyMacEngine",
+                "NoBlastCore", "NoBlastEngine",
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             exclude: ["Animations"],
@@ -35,13 +35,13 @@ let package = Package(
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),
         .testTarget(
-            name: "HeyMacCoreTests",
-            dependencies: ["HeyMacCore"],
+            name: "NoBlastCoreTests",
+            dependencies: ["NoBlastCore"],
             resources: [.copy("Fixtures")]
         ),
         .testTarget(
-            name: "HeyMacEngineTests",
-            dependencies: ["HeyMacEngine", "HeyMacCore"],
+            name: "NoBlastEngineTests",
+            dependencies: ["NoBlastEngine", "NoBlastCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]
