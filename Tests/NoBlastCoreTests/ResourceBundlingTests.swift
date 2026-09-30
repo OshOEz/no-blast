@@ -32,6 +32,21 @@ import Testing
     _ = try ModelResources.loadModel(named: "Probe", bundle: bundle)
 }
 
+@Test func aCompiledModelWinsOverABrokenPackage() throws {
+    let resources = makeTempDirectory()
+    let dir = resources.appendingPathComponent("\(ModelResources.bundleName)/Contents/Resources")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let compiled = try MLModel.compileModel(at: #require(ModelResources.url(named: "AntiSpoof")))
+    try FileManager.default.copyItem(at: compiled, to: dir.appendingPathComponent("Probe.mlmodelc"))
+    // Deliberately broken package: present, but not a real model — loadModel must not even try it.
+    let brokenPackage = dir.appendingPathComponent("Probe.mlpkgdata")
+    try FileManager.default.createDirectory(at: brokenPackage, withIntermediateDirectories: true)
+    try Data("not a manifest".utf8).write(to: brokenPackage.appendingPathComponent("Manifest.json"))
+
+    let bundle = ModelResources.resourceBundle(searching: [resources])
+    _ = try ModelResources.loadModel(named: "Probe", bundle: bundle)
+}
+
 @Test func aMissingModelThrows() {
     #expect(throws: (any Error).self) { try ModelResources.loadModel(named: "NoSuchModel") }
 }
