@@ -23,9 +23,9 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://github.com/iharshitmaurya/NoBlast/releases/latest/download/appcast.xml</string>
+	<string>https://github.com/OshOEz/no-blast/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>0w5Lm33NoVePIpJVgH8Wl3nX+kniFhj7Gv4Robk7+o0=</string>
+	<string>H5iYl29pG1bqYO943WzavVS+HeKT5C+GAkyLeuVqzOs=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>

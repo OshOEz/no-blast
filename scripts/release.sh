@@ -3,17 +3,17 @@
 # Usage: scripts/release.sh VERSION [--publish]
 #   Without --publish: builds dist/NoBlast-VERSION.dmg and dist/appcast.xml and stops.
 #   With --publish:    also creates the GitHub release vVERSION with the DMG (versioned and as NoBlast.dmg)
-#                      and appcast attached, and bumps the Homebrew cask in iharshitmaurya/homebrew-tap, so the README's download button and
-#                      installed copies find the update at releases/latest/download/appcast.xml.
-# The DMG is signed with the private key that `generate_keys` stored in your login Keychain;
-# it must match SUPublicEDKey in packaging/Info.plist.
+#                      and appcast attached, so the README's download button and installed copies find the
+#                      update at releases/latest/download/appcast.xml.
+# The DMG is signed with the private key that `generate_keys --account io.oshoez.noblast` stored in your login
+# Keychain; it must match SUPublicEDKey in packaging/Info.plist.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 VERSION="${1:?usage: release.sh VERSION [--publish]}"
 PUBLISH="${2:-}"
-REPO="iharshitmaurya/NoBlast"
+REPO="OshOEz/no-blast"
 DMG="$REPO_ROOT/dist/NoBlast-$VERSION.dmg"
 LATEST_DMG="$REPO_ROOT/dist/NoBlast.dmg" # fixed name, so releases/latest/download/NoBlast.dmg always resolves
 APPCAST="$REPO_ROOT/dist/appcast.xml"
@@ -23,7 +23,7 @@ SIGN_UPDATE="$REPO_ROOT/.build/artifacts/sparkle/Sparkle/bin/sign_update"
 
 echo "Signing the DMG for Sparkle..."
 # Prints: sparkle:edSignature="..." length="..."
-SIGNATURE_ATTRS="$("$SIGN_UPDATE" "$DMG")"
+SIGNATURE_ATTRS="$("$SIGN_UPDATE" --account io.oshoez.noblast "$DMG")"
 cp "$DMG" "$LATEST_DMG"
 
 cat > "$APPCAST" <<XML
@@ -48,19 +48,6 @@ echo "Wrote $APPCAST"
 if [ "$PUBLISH" = "--publish" ]; then
     gh release create "v$VERSION" "$DMG" "$LATEST_DMG" "$APPCAST" --repo "$REPO" --title "No Blast $VERSION" --generate-notes
     echo "Published v$VERSION"
-
-    # Point the Homebrew cask at this release, so `brew install --cask iharshitmaurya/tap/noblast` gets it.
-    TAP_DIR="$(mktemp -d)"
-    gh repo clone iharshitmaurya/homebrew-tap "$TAP_DIR" -- -q
-    SHA256="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
-    sed -i '' -e "s/^  version \".*\"/  version \"$VERSION\"/" -e "s/^  sha256 \".*\"/  sha256 \"$SHA256\"/" "$TAP_DIR/Casks/noblast.rb"
-    if ! git -C "$TAP_DIR" diff --quiet; then
-        git -C "$TAP_DIR" -c user.name="Harshit Maurya" -c user.email="46915044+iharshitmaurya@users.noreply.github.com" \
-            commit -qam "Update noblast to $VERSION"
-        git -C "$TAP_DIR" push -q
-        echo "Updated the Homebrew cask to $VERSION"
-    fi
-    rm -rf "$TAP_DIR"
 else
     echo "Not published. Re-run with --publish to create the GitHub release."
 fi
