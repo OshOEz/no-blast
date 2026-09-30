@@ -1,4 +1,5 @@
-# Sourced by build scripts. Signs code with the local self-signed identity when it
+# shellcheck shell=bash
+# Sourced by build scripts (not executable itself, hence no shebang). Signs code with the local self-signed identity when it
 # exists (stable across rebuilds, so Camera/Accessibility grants and Keychain access
 # survive app updates), otherwise ad-hoc with an identifier-only designated
 # requirement (weaker; macOS may still reset grants on update).

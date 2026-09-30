@@ -9,6 +9,7 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 VERSION="${1:-1.0.0}"
 DIST="$REPO_ROOT/dist"
 APP="$DIST/NoBlast.app"
+# shellcheck disable=SC1091 # sourced from a computed path; lib-signing.sh sits next to this script
 source "$SCRIPT_DIR/lib-signing.sh"
 
 echo "Building executables (release)..."
