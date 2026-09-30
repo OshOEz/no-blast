@@ -8,6 +8,7 @@ public final class EngineController: @unchecked Sendable {
     private let makeMatcher: () throws -> FaceMatching
     private let lockScreenEnvironment: LockScreenEnvironment
     private let typist: PasswordTyping
+    private let notificationCenter: NotificationCenter
     private let onEvent: (EngineEvent) -> Void
     private let stateLock = NSLock()
     private var unlocker: LockScreenUnlocker?
@@ -16,13 +17,15 @@ public final class EngineController: @unchecked Sendable {
     public init(
         settings: EngineSettings, log: AppLog = .shared,
         makeMatcher: @escaping () throws -> FaceMatching, lockScreenEnvironment: LockScreenEnvironment,
-        typist: PasswordTyping = KeystrokeInjector(), onEvent: @escaping (EngineEvent) -> Void
+        typist: PasswordTyping = KeystrokeInjector(), notificationCenter: NotificationCenter = DistributedNotificationCenter.default(),
+        onEvent: @escaping (EngineEvent) -> Void
     ) {
         self.settings = settings
         self.log = log
         self.makeMatcher = makeMatcher
         self.lockScreenEnvironment = lockScreenEnvironment
         self.typist = typist
+        self.notificationCenter = notificationCenter
         self.onEvent = onEvent
     }
 
@@ -53,14 +56,14 @@ public final class EngineController: @unchecked Sendable {
         )
         unlocker.start()
         stateLock.withLock { self.unlocker = unlocker }
-        lockObserver = DistributedNotificationCenter.default().addObserver(
+        lockObserver = notificationCenter.addObserver(
             forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: nil
         ) { [weak unlocker] _ in unlocker?.poke() }
         log.write("engine started (strictness \(settings.strictness.rawValue))")
     }
 
     public func stop() {
-        if let lockObserver { DistributedNotificationCenter.default().removeObserver(lockObserver) }
+        if let lockObserver { notificationCenter.removeObserver(lockObserver) }
         lockObserver = nil
         let unlocker = stateLock.withLock { () -> LockScreenUnlocker? in
             defer { self.unlocker = nil }

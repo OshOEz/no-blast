@@ -18,7 +18,7 @@ public final class KeystrokeInjector: PasswordTyping {
     }
 
     /// One key press: what to send and whether to wait after releasing it.
-    private struct Press {
+    struct Press {
         var virtualKey: CGKeyCode
         /// Set for text: the character is injected as Unicode so keyboard layout doesn't matter.
         var unicode: [UInt16]?
@@ -37,7 +37,7 @@ public final class KeystrokeInjector: PasswordTyping {
     }
 
     /// The whole sequence: every character, then Return (which needs no trailing wait).
-    private static func presses(for text: String) -> [Press] {
+    static func presses(for text: String) -> [Press] {
         let characters = text.map { Press(virtualKey: 0, unicode: Array(String($0).utf16), waitAfterRelease: true) }
         return characters + [Press(virtualKey: returnKey, unicode: nil, waitAfterRelease: false)]
     }

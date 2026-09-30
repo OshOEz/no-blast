@@ -5,6 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091 # sourced from a computed path; lib-signing.sh sits next to this script
 source "$SCRIPT_DIR/lib-signing.sh"
 
 if signing_identity_available; then

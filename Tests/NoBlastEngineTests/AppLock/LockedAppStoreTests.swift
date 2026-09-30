@@ -42,3 +42,21 @@ private func makeStore() -> LockedAppStore {
     store.remove(bundleID: "com.apple.Notes")
     #expect(store.apps.isEmpty)
 }
+
+@Test func corruptStoredAppsReadAsEmpty() {
+    let defaults = UserDefaults(suiteName: "applock-tests-\(UUID().uuidString)")!
+    defaults.set(Data("not json".utf8), forKey: "appLock.apps")
+    #expect(LockedAppStore(defaults: defaults).apps.isEmpty)
+}
+
+@Test func appsSavedByThisVersionReadBackUnchanged() {
+    let defaults = UserDefaults(suiteName: "applock-tests-\(UUID().uuidString)")!
+    // Written by No Blast 0.1: the stored format must keep decoding after any change to RelockPolicy.
+    let saved = #"[{"bundleID":"com.apple.Notes","name":"Notes","policy":{"everyTime":{}}},{"bundleID":"com.apple.mail","name":"Mail","policy":{"afterMinutes":{"_0":15}}},{"bundleID":"com.apple.MobileSMS","name":"Messages","policy":{"afterFocusLossMinutes":{"_0":5}}}]"#
+    defaults.set(Data(saved.utf8), forKey: "appLock.apps")
+    #expect(LockedAppStore(defaults: defaults).apps == [
+        LockedApp(bundleID: "com.apple.Notes", name: "Notes", policy: .everyTime),
+        LockedApp(bundleID: "com.apple.mail", name: "Mail", policy: .afterMinutes(15)),
+        LockedApp(bundleID: "com.apple.MobileSMS", name: "Messages", policy: .afterFocusLossMinutes(5)),
+    ])
+}

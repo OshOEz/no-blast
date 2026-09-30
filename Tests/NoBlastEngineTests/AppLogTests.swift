@@ -33,3 +33,14 @@ private func makeLogURL() -> URL {
     #expect(FileManager.default.fileExists(atPath: log.rotatedURL.path))
     #expect(current.utf8.count <= 120)
 }
+
+@Test func concurrentWritesKeepEveryLineWhole() throws {
+    let url = makeLogURL()
+    let log = AppLog(url: url, alsoStandardError: false)
+    DispatchQueue.concurrentPerform(iterations: 8) { thread in
+        for line in 0..<100 { log.write("thread \(thread) line \(line)") }
+    }
+    let lines = try String(contentsOf: url, encoding: .utf8).split(separator: "\n")
+    #expect(lines.count == 800)
+    #expect(lines.allSatisfy { $0.range(of: #"^\[[^\]]+\] thread \d line \d+$"#, options: .regularExpression) != nil })
+}
