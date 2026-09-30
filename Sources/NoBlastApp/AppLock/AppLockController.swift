@@ -98,9 +98,11 @@ final class AppLockController: AppLockEffects {
     }
 
     func startAuthentication(for app: RunningApp) {
+        let reason = NSRunningApplication(processIdentifier: app.pid)?.localizedName != nil
+            ? "Unlock \(app.name)" : "Unlock this app"
         episode = Task { [weak self] in
             guard let self else { return }
-            let outcome = await makeCoordinator().run(reason: "Unlock \(app.name)")
+            let outcome = await makeCoordinator().run(reason: reason)
             guard !Task.isCancelled else { return }
             core.authFinished(pid: app.pid, outcome: outcome)
         }
