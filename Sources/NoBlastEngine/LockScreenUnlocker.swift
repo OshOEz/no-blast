@@ -11,10 +11,16 @@ public struct LockScreenEnvironment {
     public var loadPassword: () throws -> String
     public var wakeDisplay: () -> Void
     public var sleep: (TimeInterval) -> Void
+    /// Seconds since the last keyboard, mouse or trackpad input in this login session.
+    public var secondsSinceUserInput: () -> TimeInterval
+    /// Monotonic seconds (system uptime), so changing the wall clock can't rearm the camera.
+    public var uptime: () -> TimeInterval
 
     public init(
         isLocked: @escaping () -> Bool?, displayIsAwake: @escaping () -> Bool, accessibilityTrusted: @escaping () -> Bool,
-        loadPassword: @escaping () throws -> String, wakeDisplay: @escaping () -> Void, sleep: @escaping (TimeInterval) -> Void
+        loadPassword: @escaping () throws -> String, wakeDisplay: @escaping () -> Void, sleep: @escaping (TimeInterval) -> Void,
+        secondsSinceUserInput: @escaping () -> TimeInterval = { .infinity },
+        uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     ) {
         self.isLocked = isLocked
         self.displayIsAwake = displayIsAwake
@@ -22,6 +28,8 @@ public struct LockScreenEnvironment {
         self.loadPassword = loadPassword
         self.wakeDisplay = wakeDisplay
         self.sleep = sleep
+        self.secondsSinceUserInput = secondsSinceUserInput
+        self.uptime = uptime
     }
 
     public static func live(store: SecureStore) -> LockScreenEnvironment {
@@ -41,7 +49,9 @@ public struct LockScreenEnvironment {
                 task.arguments = ["-u", "-t", "1"]
                 try? task.run()
             },
-            sleep: { Thread.sleep(forTimeInterval: $0) }
+            sleep: { Thread.sleep(forTimeInterval: $0) },
+            // kCGAnyInputEventType (~0) is not a named case of CGEventType.
+            secondsSinceUserInput: { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!) }
         )
     }
 }
@@ -52,19 +62,23 @@ public enum LockScreenTick: Equatable {
     case blocked(String)
     case displayAsleep
     case noMatch
+    case waitingForPresence
     case typingFailed(String)
     case unlocked
     case passwordRejected
 }
 
-/// While the screen is locked and the display is on, looks for the enrolled face and
-/// types the stored password — at most once per lock episode. If the screen is still
-/// locked afterwards the password is treated as wrong and auto-typing stops until the
-/// user saves it again, so a stale password can't lock the account out.
+/// While the screen is locked and the display is on, looks for the enrolled face (at most three
+/// 30 s windows, then only again once someone touches the Mac or the display wakes) and types
+/// the stored password — at most once per lock episode. If the screen is still locked afterwards
+/// the password is treated as wrong and auto-typing stops until the user saves it again, so a
+/// stale password can't lock the account out.
 public final class LockScreenUnlocker: @unchecked Sendable {
     static let unlockConfirmationDelay: TimeInterval = 5
     static let unlockPollInterval: TimeInterval = 0.15
     static let pollInterval: TimeInterval = 0.25
+    /// Fruitless 30 s windows allowed per lock before the camera waits for someone to show up.
+    static let maxScansPerEpisode = 3
 
     private let matcher: FaceMatching
     private let typist: PasswordTyping
@@ -76,6 +90,10 @@ public final class LockScreenUnlocker: @unchecked Sendable {
     private var stopRequested = false
     private var attemptedThisEpisode = false
     private var lastReportedProblem: String?
+    private var scansThisEpisode = 0
+    /// Uptime at which the scan budget ran out; nil while scans remain.
+    private var exhaustedAt: TimeInterval?
+    private var displaySleptSinceExhaustion = false
 
     public init(
         matcher: FaceMatching, typist: PasswordTyping, settings: EngineSettings,
@@ -117,6 +135,9 @@ public final class LockScreenUnlocker: @unchecked Sendable {
             stateLock.withLock {
                 attemptedThisEpisode = false
                 lastReportedProblem = nil
+                scansThisEpisode = 0
+                exhaustedAt = nil
+                displaySleptSinceExhaustion = false
             }
             return .notLocked
         }
@@ -125,7 +146,11 @@ public final class LockScreenUnlocker: @unchecked Sendable {
             // Paused / turned off are the user's choice, not problems worth reporting.
             return reason == VerificationGate.accessibilityMissing ? report(reason) : .blocked(reason)
         }
-        guard environment.displayIsAwake() else { return .displayAsleep }
+        guard environment.displayIsAwake() else {
+            stateLock.withLock { if exhaustedAt != nil { displaySleptSinceExhaustion = true } }
+            return .displayAsleep
+        }
+        guard mayScan() else { return .waitingForPresence }
 
         let password: String
         do {
@@ -141,7 +166,10 @@ public final class LockScreenUnlocker: @unchecked Sendable {
         )
         guard outcome.matched else {
             onEvent(.lockScreenScanEnded)
-            return outcome.failure.map { report($0) } ?? .noMatch
+            // A window that never ran (camera busy, keychain approval) doesn't spend the budget.
+            if let failure = outcome.failure { return report(failure) }
+            recordFruitlessScan()
+            return .noMatch
         }
 
         stateLock.withLock { attemptedThisEpisode = true }
@@ -170,6 +198,27 @@ public final class LockScreenUnlocker: @unchecked Sendable {
         settings.lockScreenNeedsPassword = true
         onEvent(.lockScreenPasswordRejected)
         return .passwordRejected
+    }
+
+    /// True while scans remain this lock, or once someone shows up after they ran out: input newer
+    /// than the exhaustion, or the display sleeping and waking again. Showing up opens a new round.
+    private func mayScan() -> Bool {
+        stateLock.withLock {
+            guard let exhaustedAt else { return true }
+            let inputSinceExhaustion = environment.secondsSinceUserInput() < environment.uptime() - exhaustedAt
+            guard inputSinceExhaustion || displaySleptSinceExhaustion else { return false }
+            scansThisEpisode = 0
+            self.exhaustedAt = nil
+            displaySleptSinceExhaustion = false
+            return true
+        }
+    }
+
+    private func recordFruitlessScan() {
+        stateLock.withLock {
+            scansThisEpisode += 1
+            if scansThisEpisode >= Self.maxScansPerEpisode { exhaustedAt = environment.uptime() }
+        }
     }
 
     private func report(_ problem: String) -> LockScreenTick {

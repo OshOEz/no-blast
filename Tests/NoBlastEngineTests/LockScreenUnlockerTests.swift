@@ -143,3 +143,77 @@ private struct ThrowingTypist: PasswordTyping {
     guard case .typingFailed = unlocker.tick() else { Issue.record("expected .typingFailed"); return }
     #expect(recorder.events == [.lockScreenScanning, .lockScreenScanEnded])
 }
+
+private func exhaustedUnlocker(_ system: FakeSystem, _ matcher: FakeMatcher) -> LockScreenUnlocker {
+    let settings = makeTestSettings { $0.lockScreenEnabled = true }
+    let unlocker = makeUnlocker(system: system, matcher: matcher, typist: FakeTypist(system: system, unlocks: true),
+                                settings: settings, recorder: EventRecorder())
+    for _ in 0..<LockScreenUnlocker.maxScansPerEpisode { _ = unlocker.tick() }
+    return unlocker
+}
+
+@Test func threeFruitlessScansThenTheCameraWaitsForSomeone() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher() // no match, no failure
+    let unlocker = exhaustedUnlocker(system, matcher)
+
+    #expect(matcher.callCount == LockScreenUnlocker.maxScansPerEpisode)
+    #expect(unlocker.tick() == .waitingForPresence)
+    #expect(unlocker.tick() == .waitingForPresence)
+    #expect(matcher.callCount == LockScreenUnlocker.maxScansPerEpisode)
+}
+
+@Test func inputAfterTheScansRanOutStartsANewRound() {
+    let system = FakeSystem() // exhausted at uptime 100
+    let matcher = FakeMatcher()
+    let unlocker = exhaustedUnlocker(system, matcher)
+
+    system.uptime = 110
+    system.idle = 5 // last input at 105, after exhaustion
+    #expect(unlocker.tick() == .noMatch)
+    #expect(matcher.callCount == LockScreenUnlocker.maxScansPerEpisode + 1)
+}
+
+@Test func inputBeforeTheScansRanOutDoesNotCount() {
+    let system = FakeSystem() // exhausted at uptime 100
+    let matcher = FakeMatcher()
+    let unlocker = exhaustedUnlocker(system, matcher)
+
+    system.uptime = 110
+    system.idle = 15 // last input at 95, during the last scan
+    #expect(unlocker.tick() == .waitingForPresence)
+}
+
+@Test func wakingTheDisplayAfterTheScansRanOutStartsANewRound() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher()
+    let unlocker = exhaustedUnlocker(system, matcher)
+
+    system.displayAwake = false
+    #expect(unlocker.tick() == .displayAsleep)
+    system.displayAwake = true
+    #expect(unlocker.tick() == .noMatch)
+}
+
+@Test func unlockingResetsTheScanBudget() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher()
+    let unlocker = exhaustedUnlocker(system, matcher)
+
+    system.locked = false
+    #expect(unlocker.tick() == .notLocked)
+    system.locked = true
+    #expect(unlocker.tick() == .noMatch)
+}
+
+@Test func scansThatNeverStartedDoNotUseTheBudget() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher()
+    matcher.outcome.failure = "camera busy with another verification"
+    let settings = makeTestSettings { $0.lockScreenEnabled = true }
+    let unlocker = makeUnlocker(system: system, matcher: matcher, typist: FakeTypist(system: system, unlocks: true),
+                                settings: settings, recorder: EventRecorder())
+
+    for _ in 0..<5 { #expect(unlocker.tick() == .blocked("camera busy with another verification")) }
+    #expect(matcher.callCount == 5)
+}

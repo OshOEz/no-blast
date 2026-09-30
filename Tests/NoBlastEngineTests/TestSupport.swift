@@ -48,6 +48,10 @@ final class FakeSystem {
     var accessibilityTrusted = true
     var password = "hunter2"
     var passwordError: Error?
+    /// Monotonic clock, seconds.
+    var uptime: TimeInterval = 100
+    /// Seconds since the last keyboard/mouse/trackpad input. `.infinity` = none since boot.
+    var idle: TimeInterval = .infinity
     private(set) var slept: [TimeInterval] = []
 
     func environment() -> LockScreenEnvironment {
@@ -60,7 +64,9 @@ final class FakeSystem {
                 return self.password
             },
             wakeDisplay: {},
-            sleep: { self.slept.append($0) }
+            sleep: { self.slept.append($0) },
+            secondsSinceUserInput: { self.idle },
+            uptime: { self.uptime }
         )
     }
 }
