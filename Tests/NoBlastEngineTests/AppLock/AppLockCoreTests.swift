@@ -316,6 +316,35 @@ private let browser = RunningApp(pid: 30, bundleID: "com.example.browser", name:
     #expect(!h.core.protectsQuit)
 }
 
+@MainActor @Test func aStaleSwitchAwayCheckDoesNotAbandonTheNextEpisode() {
+    let h = Harness()
+    h.core.candidate(notes)
+    h.core.candidate(mail)
+    h.core.activated(browser)
+    h.core.terminated(notes) // mail's episode begins
+    h.effects.reset()
+    h.core.confirmSwitchAway(lockedPID: 10, otherPID: 30, frontmostPID: 30)
+    #expect(h.effects.calls.isEmpty)
+    #expect(h.core.activeApp == mail)
+}
+
+@MainActor @Test func aLockedAppLaunchedMoreThanFiveSecondsAgoIsHidden() {
+    let h = Harness()
+    h.core.backgroundLocked(RunningApp(pid: 11, bundleID: "com.example.notes", name: "Notes",
+                                        launchedAt: h.clock.date.addingTimeInterval(-6)))
+    #expect(h.effects.calls == [.hide(11)])
+}
+
+@MainActor @Test func startRefusesWhileAppLockIsOff() {
+    let h = Harness()
+    h.core.stop()
+    h.store.enabled = false
+    #expect(!h.core.start())
+    h.effects.reset()
+    h.core.candidate(notes)
+    #expect(h.effects.calls.isEmpty)
+}
+
 @MainActor @Test func stoppingClearsEverythingAndStartsOnlyOnce() {
     let h = Harness()
     h.core.candidate(mail)
