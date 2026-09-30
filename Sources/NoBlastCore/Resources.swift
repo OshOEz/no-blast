@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreML
 import Foundation
 import ImageIO
 
@@ -7,6 +8,21 @@ enum ModelResources {
 
     static func url(named name: String) -> URL? {
         resourceBundle().url(forResource: name, withExtension: "mlpkgdata")
+    }
+
+    struct MissingModel: Error { let name: String }
+
+    /// Prefers the copy compiled at build time (`<name>.mlmodelc`, put in the app by
+    /// scripts/build-app.sh), so launch skips Core ML compilation; falls back to compiling the
+    /// package, which is all `swift run` and the tests have.
+    static func loadModel(named name: String, bundle: Bundle = resourceBundle()) throws -> MLModel {
+        if let compiled = bundle.url(forResource: name, withExtension: "mlmodelc") {
+            return try MLModel(contentsOf: compiled)
+        }
+        guard let package = bundle.url(forResource: name, withExtension: "mlpkgdata") else {
+            throw MissingModel(name: name)
+        }
+        return try MLModel(contentsOf: MLModel.compileModel(at: package))
     }
 
     /// SwiftPM's generated `Bundle.module` only looks beside the executable and at the

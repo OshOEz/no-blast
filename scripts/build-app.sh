@@ -22,6 +22,15 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/NoBlast" "$APP/Contents/MacOS/NoBlast"
 # SwiftPM's resource bundle holds the Core ML models; the app looks for it here.
 cp -R "$BIN/NoBlast_NoBlastCore.bundle" "$APP/Contents/Resources/"
+echo "Compiling Core ML models..."
+MODELS="$APP/Contents/Resources/NoBlast_NoBlastCore.bundle/Contents/Resources"
+for name in ArcFace AntiSpoof; do
+    WORK="$(mktemp -d)"
+    # The package is stored as .mlpkgdata so SwiftPM copies it as-is; coremlcompiler wants the real extension.
+    cp -R "$MODELS/$name.mlpkgdata" "$WORK/$name.mlpackage"
+    xcrun coremlcompiler compile "$WORK/$name.mlpackage" "$MODELS" >/dev/null
+    rm -rf "$WORK" "$MODELS/$name.mlpkgdata"
+done
 cp -R "$REPO_ROOT/Sources/NoBlastApp/Animations" "$APP/Contents/Resources/Animations"
 # Sparkle (the updater) is a framework the executable loads from Contents/Frameworks.
 SPARKLE="$(find "$REPO_ROOT/.build/artifacts/sparkle" -type d -name Sparkle.framework -path '*macos-arm64_x86_64*' | head -1)"

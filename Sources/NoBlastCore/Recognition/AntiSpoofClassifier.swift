@@ -40,12 +40,8 @@ public final class AntiSpoofClassifier: LivenessChecking {
     private let outputName = "probabilities"
 
     public init() throws {
-        guard let url = ModelResources.url(named: "AntiSpoof") else {
-            throw AntiSpoofError.modelLoadFailed
-        }
         do {
-            let compiledURL = try MLModel.compileModel(at: url)
-            self.model = try MLModel(contentsOf: compiledURL)
+            model = try ModelResources.loadModel(named: "AntiSpoof")
         } catch {
             throw AntiSpoofError.modelLoadFailed
         }

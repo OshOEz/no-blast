@@ -1,3 +1,4 @@
+import CoreML
 import Foundation
 import Testing
 @testable import NoBlastCore
@@ -18,4 +19,19 @@ import Testing
     try FileManager.default.createDirectory(at: model, withIntermediateDirectories: true)
     let bundle = ModelResources.resourceBundle(searching: [resources])
     #expect(bundle.url(forResource: "Probe", withExtension: "mlpkgdata")?.resolvingSymlinksInPath().path.hasPrefix(resources.resolvingSymlinksInPath().path) == true)
+}
+
+@Test func aCompiledModelIsLoadedWithoutItsPackage() throws {
+    let resources = makeTempDirectory()
+    let dir = resources.appendingPathComponent("\(ModelResources.bundleName)/Contents/Resources")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let compiled = try MLModel.compileModel(at: #require(ModelResources.url(named: "AntiSpoof")))
+    try FileManager.default.copyItem(at: compiled, to: dir.appendingPathComponent("Probe.mlmodelc"))
+
+    let bundle = ModelResources.resourceBundle(searching: [resources])
+    _ = try ModelResources.loadModel(named: "Probe", bundle: bundle)
+}
+
+@Test func aMissingModelThrows() {
+    #expect(throws: (any Error).self) { try ModelResources.loadModel(named: "NoSuchModel") }
 }

@@ -21,12 +21,8 @@ public final class FaceEmbedder: FaceEmbedding_Provider {
     private let outputName = "embedding"
 
     public init() throws {
-        guard let url = ModelResources.url(named: "ArcFace") else {
-            throw FaceEmbedderError.modelLoadFailed
-        }
         do {
-            let compiledURL = try MLModel.compileModel(at: url)
-            self.model = try MLModel(contentsOf: compiledURL)
+            model = try ModelResources.loadModel(named: "ArcFace")
         } catch {
             throw FaceEmbedderError.modelLoadFailed
         }

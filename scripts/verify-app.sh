@@ -11,6 +11,8 @@ for path in \
     Contents/MacOS/NoBlast \
     Contents/Info.plist \
     Contents/Resources/NoBlast_NoBlastCore.bundle \
+    Contents/Resources/NoBlast_NoBlastCore.bundle/Contents/Resources/ArcFace.mlmodelc \
+    Contents/Resources/NoBlast_NoBlastCore.bundle/Contents/Resources/AntiSpoof.mlmodelc \
     Contents/Resources/Animations/unlockstatic.png \
     Contents/Resources/Animations/unlockanimation.mp4 \
     Contents/Resources/Animations/unsuccessfulunlockanimation.mp4 \
