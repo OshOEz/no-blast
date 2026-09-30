@@ -1,2 +1,16 @@
 .build/
 *.xcuserstate
+.worktrees/
+.superpowers/
+.DS_Store
+dist/
+
+MEMORY.md
+THIRD_PARTY.md
+
+.agents/
+.claude/
+my-asset/
+brag-output*/
+skills-lock.json
+.brag_d*

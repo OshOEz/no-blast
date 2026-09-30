@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>io.oshoez.noblast</string>
+	<key>CFBundleName</key>
+	<string>No Blast</string>
+	<key>CFBundleDisplayName</key>
+	<string>No Blast</string>
+	<key>CFBundleExecutable</key>
+	<string>NoBlast</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
+	<key>CFBundleVersion</key>
+	<string>__VERSION__</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/OshOEz/no-blast/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>H5iYl29pG1bqYO943WzavVS+HeKT5C+GAkyLeuVqzOs=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>No Blast uses the camera to recognize your face for lock-screen unlock and App Lock. Images never leave this Mac.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Harshit Maurya, OshOEz. MIT License.</string>
+</dict>
+</plist>

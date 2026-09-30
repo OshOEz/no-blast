@@ -1,0 +1,82 @@
+#!/bin/bash
+# Builds NoBlast.app and a DMG in dist.
+# Usage: scripts/build-app.sh [version]
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PACKAGING="$(dirname "$SCRIPT_DIR")/packaging"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+VERSION="${1:-1.0.0}"
+DIST="$REPO_ROOT/dist"
+APP="$DIST/NoBlast.app"
+source "$SCRIPT_DIR/lib-signing.sh"
+
+echo "Building executables (release)..."
+(cd "$REPO_ROOT" && swift build -c release --product NoBlast)
+BIN="$(cd "$REPO_ROOT" && swift build -c release --show-bin-path)"
+
+echo "Assembling $APP..."
+mkdir -p "$DIST" && touch "$DIST/.metadata_never_index"  # keeps Spotlight from listing this build copy as an installed app
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$BIN/NoBlast" "$APP/Contents/MacOS/NoBlast"
+# SwiftPM's resource bundle holds the Core ML models; the app looks for it here.
+cp -R "$BIN/NoBlast_NoBlastCore.bundle" "$APP/Contents/Resources/"
+echo "Compiling Core ML models..."
+MODELS="$APP/Contents/Resources/NoBlast_NoBlastCore.bundle/Contents/Resources"
+for name in ArcFace AntiSpoof; do
+    WORK="$(mktemp -d)"
+    # The package is stored as .mlpkgdata so SwiftPM copies it as-is; coremlcompiler wants the real extension.
+    cp -R "$MODELS/$name.mlpkgdata" "$WORK/$name.mlpackage"
+    xcrun coremlcompiler compile "$WORK/$name.mlpackage" "$MODELS" >/dev/null
+    rm -rf "$WORK" "$MODELS/$name.mlpkgdata"
+done
+cp -R "$REPO_ROOT/Sources/NoBlastApp/Animations" "$APP/Contents/Resources/Animations"
+# Sparkle (the updater) is a framework the executable loads from Contents/Frameworks.
+SPARKLE="$(find "$REPO_ROOT/.build/artifacts/sparkle" -type d -name Sparkle.framework -path '*macos-arm64_x86_64*' | head -1)"
+[ -d "$SPARKLE" ] || { echo "Sparkle.framework not found; run swift build first" >&2; exit 1; }
+mkdir -p "$APP/Contents/Frameworks"
+cp -R "$SPARKLE" "$APP/Contents/Frameworks/"
+mkdir -p "$APP/Contents/Library/LaunchAgents"
+cp "$PACKAGING/io.oshoez.noblast.agent.plist" "$APP/Contents/Library/LaunchAgents/"
+cp "$REPO_ROOT/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/"
+sed "s/__VERSION__/$VERSION/g" "$PACKAGING/Info.plist" > "$APP/Contents/Info.plist"
+
+echo "Building the app icon..."
+ICONSET="$DIST/AppIcon.iconset"
+rm -rf "$ICONSET"
+mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+    sips -z $size $size "$PACKAGING/AppIcon.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+    sips -z $((size * 2)) $((size * 2)) "$PACKAGING/AppIcon.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+rm -rf "$ICONSET"
+
+echo "Signing..."
+# Inside-out: Sparkle's helpers, then the framework, then the app.
+SPK="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+for nested in "$SPK/XPCServices/Installer.xpc" "$SPK/XPCServices/Downloader.xpc" "$SPK/Autoupdate" "$SPK/Updater.app"; do
+    [ -e "$nested" ] && sign_nested "$nested"
+done
+sign_nested "$APP/Contents/Frameworks/Sparkle.framework"
+sign_code "$APP" io.oshoez.noblast
+codesign --verify --deep --strict "$APP"
+if ! signing_identity_available; then
+    echo "note: signed ad-hoc. Run scripts/create-signing-identity.sh once so permissions survive app updates." >&2
+fi
+
+echo "Building the disk image..."
+STAGING="$DIST/dmg"
+rm -rf "$STAGING"
+mkdir -p "$STAGING"
+cp -R "$APP" "$STAGING/"
+ln -s /Applications "$STAGING/Applications"
+cp "$PACKAGING/README.txt" "$STAGING/README.txt"
+DMG="$DIST/NoBlast-$VERSION.dmg"
+rm -f "$DMG"
+hdiutil create -volname "No Blast" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null
+rm -rf "$STAGING"
+
+"$SCRIPT_DIR/verify-app.sh" "$APP"
+echo "Built $DMG"
