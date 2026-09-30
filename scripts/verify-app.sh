@@ -11,8 +11,6 @@ for path in \
     Contents/MacOS/NoBlast \
     Contents/Info.plist \
     Contents/Resources/NoBlast_NoBlastCore.bundle \
-    Contents/Resources/NoBlast_NoBlastCore.bundle/Contents/Resources/ArcFace.mlmodelc \
-    Contents/Resources/NoBlast_NoBlastCore.bundle/Contents/Resources/AntiSpoof.mlmodelc \
     Contents/Resources/Animations/unlockstatic.png \
     Contents/Resources/Animations/unlockanimation.mp4 \
     Contents/Resources/Animations/unsuccessfulunlockanimation.mp4 \
@@ -21,6 +19,12 @@ for path in \
     Contents/Library/LaunchAgents/io.oshoez.noblast.agent.plist
 do
     [ -e "$APP/$path" ] || fail "missing $path"
+done
+# SwiftPM's native build system produces a flat resource bundle; the Xcode build
+# system (used on some dev machines) wraps it in Contents/Resources. Find either way.
+for model in ArcFace AntiSpoof; do
+    find "$APP/Contents/Resources/NoBlast_NoBlastCore.bundle" -name "$model.mlmodelc" -print -quit | grep -q . \
+        || fail "missing $model.mlmodelc in NoBlast_NoBlastCore.bundle"
 done
 
 codesign --verify --deep --strict "$APP" || fail "signature does not verify"

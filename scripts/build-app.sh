@@ -24,7 +24,10 @@ cp "$BIN/NoBlast" "$APP/Contents/MacOS/NoBlast"
 # SwiftPM's resource bundle holds the Core ML models; the app looks for it here.
 cp -R "$BIN/NoBlast_NoBlastCore.bundle" "$APP/Contents/Resources/"
 echo "Compiling Core ML models..."
-MODELS="$APP/Contents/Resources/NoBlast_NoBlastCore.bundle/Contents/Resources"
+# SwiftPM's native build system produces a flat resource bundle; the Xcode build
+# system (used on some dev machines) wraps it in Contents/Resources. Find it either way.
+MODELS="$(dirname "$(find "$APP/Contents/Resources/NoBlast_NoBlastCore.bundle" -name 'ArcFace.mlpkgdata' -print -quit)")"
+[ -n "$MODELS" ] || { echo "ArcFace.mlpkgdata not found in NoBlast_NoBlastCore.bundle" >&2; exit 1; }
 for name in ArcFace AntiSpoof; do
     WORK="$(mktemp -d)"
     # The package is stored as .mlpkgdata so SwiftPM copies it as-is; coremlcompiler wants the real extension.
