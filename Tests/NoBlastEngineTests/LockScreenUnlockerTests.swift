@@ -195,6 +195,18 @@ private func exhaustedUnlocker(_ system: FakeSystem, _ matcher: FakeMatcher) -> 
     #expect(unlocker.tick() == .noMatch)
 }
 
+@Test func aNewRoundGivesThreeMoreWindows() {
+    let system = FakeSystem() // exhausted at uptime 100
+    let matcher = FakeMatcher()
+    let unlocker = exhaustedUnlocker(system, matcher)
+
+    system.uptime = 110
+    system.idle = 5 // last input at 105, after exhaustion: opens a new round
+    for _ in 0..<LockScreenUnlocker.maxScansPerEpisode { #expect(unlocker.tick() == .noMatch) }
+    #expect(unlocker.tick() == .waitingForPresence)
+    #expect(matcher.callCount == 2 * LockScreenUnlocker.maxScansPerEpisode)
+}
+
 @Test func unlockingResetsTheScanBudget() {
     let system = FakeSystem()
     let matcher = FakeMatcher()
