@@ -11,6 +11,7 @@ public final class EngineController: @unchecked Sendable {
     private let onEvent: (EngineEvent) -> Void
     private let stateLock = NSLock()
     private var unlocker: LockScreenUnlocker?
+    private var lockObserver: NSObjectProtocol?
 
     public init(
         settings: EngineSettings, log: AppLog = .shared,
@@ -52,10 +53,15 @@ public final class EngineController: @unchecked Sendable {
         )
         unlocker.start()
         stateLock.withLock { self.unlocker = unlocker }
+        lockObserver = DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: nil
+        ) { [weak unlocker] _ in unlocker?.poke() }
         log.write("engine started (strictness \(settings.strictness.rawValue))")
     }
 
     public func stop() {
+        if let lockObserver { DistributedNotificationCenter.default().removeObserver(lockObserver) }
+        lockObserver = nil
         let unlocker = stateLock.withLock { () -> LockScreenUnlocker? in
             defer { self.unlocker = nil }
             return self.unlocker

@@ -206,6 +206,13 @@ private func exhaustedUnlocker(_ system: FakeSystem, _ matcher: FakeMatcher) -> 
     #expect(unlocker.tick() == .noMatch)
 }
 
+@Test func unlockedStatePollsSlowlyButStillPolls() {
+    #expect(LockScreenUnlocker.pollInterval(after: .notLocked) == 2)
+    for tick: LockScreenTick in [.noMatch, .displayAsleep, .waitingForPresence, .alreadyAttempted, .blocked("x")] {
+        #expect(LockScreenUnlocker.pollInterval(after: tick) == 0.25)
+    }
+}
+
 @Test func scansThatNeverStartedDoNotUseTheBudget() {
     let system = FakeSystem()
     let matcher = FakeMatcher()

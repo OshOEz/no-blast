@@ -76,7 +76,16 @@ public enum LockScreenTick: Equatable {
 public final class LockScreenUnlocker: @unchecked Sendable {
     static let unlockConfirmationDelay: TimeInterval = 5
     static let unlockPollInterval: TimeInterval = 0.15
-    static let pollInterval: TimeInterval = 0.25
+    static let lockedPollInterval: TimeInterval = 0.25
+    /// While unlocked, the lock notification (`poke()`) is the fast path; this slow poll is the safety net.
+    static let unlockedPollInterval: TimeInterval = 2
+
+    static func pollInterval(after tick: LockScreenTick) -> TimeInterval {
+        tick == .notLocked ? unlockedPollInterval : lockedPollInterval
+    }
+
+    /// Signalled to cut the current wait short.
+    private let kick = DispatchSemaphore(value: 0)
     /// Fruitless 30 s windows allowed per lock before the camera waits for someone to show up.
     static let maxScansPerEpisode = 3
 
@@ -116,8 +125,8 @@ public final class LockScreenUnlocker: @unchecked Sendable {
         guard shouldStart else { return }
         Thread.detachNewThread { [self] in
             while !isStopRequested {
-                tick()
-                environment.sleep(Self.pollInterval)
+                let result = tick()
+                _ = kick.wait(timeout: .now() + Self.pollInterval(after: result))
             }
             stateLock.withLock { running = false }
         }
@@ -125,6 +134,12 @@ public final class LockScreenUnlocker: @unchecked Sendable {
 
     public func stop() {
         stateLock.withLock { stopRequested = true }
+        kick.signal()
+    }
+
+    /// Checks the lock state now instead of at the end of the current wait (called on screen lock).
+    public func poke() {
+        kick.signal()
     }
 
     private var isStopRequested: Bool { stateLock.withLock { stopRequested } }
