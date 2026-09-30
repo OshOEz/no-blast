@@ -12,6 +12,18 @@ private final class CheckCounter: @unchecked Sendable {
     var allStamps: [UInt64] { lock.withLock { stamps } }
 }
 
+/// Counts `removeObserver(_:)` calls, so a test can confirm the lock observer is removed at stop().
+private final class CountingNotificationCenter: NotificationCenter, @unchecked Sendable {
+    private let lock = NSLock()
+    private var removals = 0
+    var removeObserverCount: Int { lock.withLock { removals } }
+
+    override func removeObserver(_ observer: Any) {
+        lock.withLock { removals += 1 }
+        super.removeObserver(observer)
+    }
+}
+
 private func makeController(settings: EngineSettings, counter: CheckCounter, center: NotificationCenter) -> EngineController {
     let system = FakeSystem()
     var environment = system.environment()
@@ -64,6 +76,16 @@ private func makeController(settings: EngineSettings, counter: CheckCounter, cen
     try await Task.sleep(for: .milliseconds(300))
     #expect(counter.count == afterStop)
     #expect(!controller.isRunning)
+}
+
+@Test func stopRemovesTheLockObserverExactlyOnce() async throws {
+    let counter = CheckCounter()
+    let center = CountingNotificationCenter()
+    let controller = makeController(settings: makeTestSettings { $0.lockScreenEnabled = true }, counter: counter, center: center)
+    try controller.start()
+    try await Task.sleep(for: .milliseconds(100))
+    controller.stop()
+    #expect(center.removeObserverCount == 1)
 }
 
 @Test func anUnfinishedSetupStartsNothing() async throws {
