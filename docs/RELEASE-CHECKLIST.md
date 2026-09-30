@@ -7,9 +7,12 @@ Run before pushing a `vX.Y.Z` tag on `prod`. About 10 minutes.
 1. Export the Sparkle key into the `release` environment, then delete the file:
 
    ```bash
-   .build/artifacts/sparkle/Sparkle/bin/generate_keys --account io.oshoez.noblast -x /tmp/noblast-key
-   gh secret set SPARKLE_ED_PRIVATE_KEY --env release --repo OshOEz/no-blast < /tmp/noblast-key
-   rm /tmp/noblast-key
+   KEY="$(mktemp)"
+   .build/artifacts/sparkle/Sparkle/bin/generate_keys --account io.oshoez.noblast -x "$KEY"
+   # if it refuses an existing (empty) file, use a fresh path instead:
+   #   KEY="$(mktemp -d)/key"; umask 077
+   gh secret set SPARKLE_ED_PRIVATE_KEY --env release --repo OshOEz/no-blast < "$KEY"
+   rm -P "$KEY"
    ```
 
    The key now lives in your login Keychain and in that secret. Losing both strands every installed copy
@@ -23,6 +26,8 @@ Run before pushing a `vX.Y.Z` tag on `prod`. About 10 minutes.
 4. Scan budget: lock, stay out of view ~1 min 30 s: the camera light turns on at most three times (~30 s each).
 5. Start typing your password during a scan: No Blast does not type over it.
 6. `gh secret list --env release --repo OshOEz/no-blast` lists `SPARKLE_ED_PRIVATE_KEY`.
-7. `git tag vX.Y.Z <prod commit> && git push origin vX.Y.Z`, then watch the Release workflow. It waits for your
+7. `git tag vX.Y.Z origin/prod && git push origin vX.Y.Z`, then watch the Release workflow. It waits for your
    approval (GitHub → Actions → the run → Review deployments → Approve) before it builds and publishes. After
    approving, check that the release has `NoBlast-X.Y.Z.dmg`, `NoBlast.dmg` and `appcast.xml`.
+8. If the Release workflow fails after creating a draft, delete it with
+   `gh release delete vX.Y.Z --repo OshOEz/no-blast` (keeps the tag) and re-run the workflow.
