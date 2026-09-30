@@ -15,12 +15,16 @@ public struct LockScreenEnvironment {
     public var secondsSinceUserInput: () -> TimeInterval
     /// Monotonic seconds (system uptime), so changing the wall clock can't rearm the camera.
     public var uptime: () -> TimeInterval
+    /// Seconds since the last keyboard key press only — mouse movement must not block unlocking,
+    /// but a key press means the user may be typing their password by hand mid-scan.
+    public var secondsSinceKeyPress: () -> TimeInterval
 
     public init(
         isLocked: @escaping () -> Bool?, displayIsAwake: @escaping () -> Bool, accessibilityTrusted: @escaping () -> Bool,
         loadPassword: @escaping () throws -> String, wakeDisplay: @escaping () -> Void, sleep: @escaping (TimeInterval) -> Void,
         secondsSinceUserInput: @escaping () -> TimeInterval = { .infinity },
-        uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+        uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+        secondsSinceKeyPress: @escaping () -> TimeInterval = { .infinity }
     ) {
         self.isLocked = isLocked
         self.displayIsAwake = displayIsAwake
@@ -30,6 +34,7 @@ public struct LockScreenEnvironment {
         self.sleep = sleep
         self.secondsSinceUserInput = secondsSinceUserInput
         self.uptime = uptime
+        self.secondsSinceKeyPress = secondsSinceKeyPress
     }
 
     public static func live(store: SecureStore) -> LockScreenEnvironment {
@@ -51,7 +56,8 @@ public struct LockScreenEnvironment {
             },
             sleep: { Thread.sleep(forTimeInterval: $0) },
             // kCGAnyInputEventType (~0) is not a named case of CGEventType.
-            secondsSinceUserInput: { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!) }
+            secondsSinceUserInput: { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!) },
+            secondsSinceKeyPress: { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown) }
         )
     }
 }
@@ -66,6 +72,7 @@ public enum LockScreenTick: Equatable {
     case typingFailed(String)
     case unlocked
     case passwordRejected
+    case userIsTyping
 }
 
 /// While the screen is locked and the display is on, looks for the enrolled face (at most three
@@ -174,6 +181,7 @@ public final class LockScreenUnlocker: @unchecked Sendable {
             return report("stored password unavailable (\(error))")
         }
 
+        let scanStartedAt = environment.uptime()
         onEvent(.lockScreenScanning)
         let outcome = matcher.run(
             timeout: 30, requiredConsecutive: 2, waitForTurn: 0,
@@ -185,6 +193,15 @@ public final class LockScreenUnlocker: @unchecked Sendable {
             if let failure = outcome.failure { return report(failure) }
             recordFruitlessScan()
             return .noMatch
+        }
+
+        // The scan took ~1-1.5 s; if a key was pressed after it started, the user may be typing
+        // their password by hand right now. Typing over them would fail the login and disable
+        // lock-screen unlock (lockScreenNeedsPassword) for a password that was never actually wrong.
+        if environment.secondsSinceKeyPress() < environment.uptime() - scanStartedAt {
+            stateLock.withLock { attemptedThisEpisode = true }
+            onEvent(.lockScreenScanEnded)
+            return .userIsTyping
         }
 
         stateLock.withLock { attemptedThisEpisode = true }

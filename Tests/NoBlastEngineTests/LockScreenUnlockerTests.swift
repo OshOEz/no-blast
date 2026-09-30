@@ -208,9 +208,44 @@ private func exhaustedUnlocker(_ system: FakeSystem, _ matcher: FakeMatcher) -> 
 
 @Test func unlockedStatePollsSlowlyButStillPolls() {
     #expect(LockScreenUnlocker.pollInterval(after: .notLocked) == 2)
-    for tick: LockScreenTick in [.noMatch, .displayAsleep, .waitingForPresence, .alreadyAttempted, .blocked("x")] {
+    for tick: LockScreenTick in [.noMatch, .displayAsleep, .waitingForPresence, .alreadyAttempted, .blocked("x"), .userIsTyping] {
         #expect(LockScreenUnlocker.pollInterval(after: tick) == 0.25)
     }
+}
+
+@Test func aKeyPressDuringTheScanSkipsTyping() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher()
+    matcher.outcome = matchedOutcome()
+    matcher.onRun = {
+        system.uptime += 1
+        system.keyIdle = 0.5
+    }
+    let typist = FakeTypist(system: system, unlocks: true)
+    let settings = makeTestSettings { $0.lockScreenEnabled = true }
+    let recorder = EventRecorder()
+    let unlocker = makeUnlocker(system: system, matcher: matcher, typist: typist, settings: settings, recorder: recorder)
+
+    #expect(unlocker.tick() == .userIsTyping)
+    #expect(typist.typed.isEmpty)
+    #expect(settings.lockScreenNeedsPassword == false)
+    #expect(recorder.events == [.lockScreenScanning, .lockScreenScanEnded])
+    #expect(unlocker.tick() == .alreadyAttempted)
+}
+
+@Test func aKeyPressBeforeTheScanDoesNotBlockTyping() {
+    let system = FakeSystem()
+    system.keyIdle = 5
+    let matcher = FakeMatcher()
+    matcher.outcome = matchedOutcome()
+    matcher.onRun = { system.uptime += 1 }
+    let typist = FakeTypist(system: system, unlocks: true)
+    let settings = makeTestSettings { $0.lockScreenEnabled = true }
+    let recorder = EventRecorder()
+    let unlocker = makeUnlocker(system: system, matcher: matcher, typist: typist, settings: settings, recorder: recorder)
+
+    #expect(unlocker.tick() == .unlocked)
+    #expect(typist.typed == ["hunter2"])
 }
 
 @Test func scansThatNeverStartedDoNotUseTheBudget() {

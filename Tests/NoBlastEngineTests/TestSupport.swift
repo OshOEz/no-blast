@@ -33,10 +33,13 @@ func matchedOutcome() -> VerificationOutcome {
 final class FakeMatcher: FaceMatching {
     var outcome = VerificationOutcome()
     private(set) var callCount = 0
+    /// Called inside `run`, so a test can simulate time passing during the scan.
+    var onRun: (() -> Void)?
 
     func run(timeout: TimeInterval, requiredConsecutive: Int, waitForTurn: TimeInterval,
              keepGoing: () -> Bool) -> VerificationOutcome {
         callCount += 1
+        onRun?()
         return outcome
     }
 }
@@ -52,6 +55,8 @@ final class FakeSystem {
     var uptime: TimeInterval = 100
     /// Seconds since the last keyboard/mouse/trackpad input. `.infinity` = none since boot.
     var idle: TimeInterval = .infinity
+    /// Seconds since the last keyboard key press. `.infinity` = none since boot.
+    var keyIdle: TimeInterval = .infinity
     private(set) var slept: [TimeInterval] = []
 
     func environment() -> LockScreenEnvironment {
@@ -66,7 +71,8 @@ final class FakeSystem {
             wakeDisplay: {},
             sleep: { self.slept.append($0) },
             secondsSinceUserInput: { self.idle },
-            uptime: { self.uptime }
+            uptime: { self.uptime },
+            secondsSinceKeyPress: { self.keyIdle }
         )
     }
 }
