@@ -56,17 +56,16 @@ final class AppModel {
             return
         }
 
-        do {
-            runtime = try NoBlastRuntime()
-        } catch {
-            startupError = "Face models failed to load: \(error)"
-            log.write(startupError ?? "")
-        }
-
         reloadSettings()
         refreshSystemState()
         applyLaunchAtLogin()
-        restartEngine()
+        // Loading the models takes a moment; the menu bar must not freeze for it. Until it's done,
+        // `runtime` is nil: the engine waits and App Lock goes straight to Touch ID / password.
+        lastEvent = "loading face models…"
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let result = Result { try NoBlastRuntime() }
+            await self?.runtimeLoaded(result)
+        }
         AppLockController.shared.faceMatcher = { [weak self] in
             guard let self, self.setupComplete, !self.paused, let runtime = self.runtime else { return nil }
             return runtime.verifier(interactive: false, strictness: self.strictness)
@@ -122,6 +121,19 @@ final class AppModel {
     }
 
     // MARK: - Engine
+
+    private func runtimeLoaded(_ result: Result<NoBlastRuntime, Error>) {
+        switch result {
+        case .success(let loaded):
+            runtime = loaded
+            lastEvent = "no checks yet"
+            restartEngine()
+        case .failure(let error):
+            startupError = "Face models failed to load: \(error)"
+            lastEvent = "face models failed to load"
+            log.write(startupError ?? "")
+        }
+    }
 
     func restartEngine() {
         controller?.stop()
