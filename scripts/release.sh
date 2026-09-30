@@ -5,8 +5,9 @@
 #   With --publish:    also creates the GitHub release vVERSION with the DMG (versioned and as NoBlast.dmg)
 #                      and appcast attached, so the README's download button and installed copies find the
 #                      update at releases/latest/download/appcast.xml.
-# The DMG is signed with the private key that `generate_keys --account io.oshoez.noblast` stored in your login
-# Keychain; it must match SUPublicEDKey in packaging/Info.plist.
+# The DMG is signed with the private key from SPARKLE_ED_KEY_FILE when set (CI), otherwise the one
+# `generate_keys --account io.oshoez.noblast` stored in your login Keychain; it must match SUPublicEDKey in
+# packaging/Info.plist.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +24,12 @@ SIGN_UPDATE="$REPO_ROOT/.build/artifacts/sparkle/Sparkle/bin/sign_update"
 
 echo "Signing the DMG for Sparkle..."
 # Prints: sparkle:edSignature="..." length="..."
-SIGNATURE_ATTRS="$("$SIGN_UPDATE" --account io.oshoez.noblast "$DMG")"
+# CI passes the key as a file (SPARKLE_ED_KEY_FILE); a local release uses the login Keychain.
+if [ -n "${SPARKLE_ED_KEY_FILE:-}" ]; then
+    SIGNATURE_ATTRS="$("$SIGN_UPDATE" --ed-key-file "$SPARKLE_ED_KEY_FILE" "$DMG")"
+else
+    SIGNATURE_ATTRS="$("$SIGN_UPDATE" --account io.oshoez.noblast "$DMG")"
+fi
 cp "$DMG" "$LATEST_DMG"
 
 cat > "$APPCAST" <<XML

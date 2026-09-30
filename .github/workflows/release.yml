@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    environment: release
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Only vX.Y.Z tags on prod
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not a vX.Y.Z tag: $GITHUB_REF_NAME" >&2; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/prod || { echo "$GITHUB_REF_NAME is not on prod" >&2; exit 1; }
+      - name: Select the newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+      - name: Tests and coverage floors
+        run: scripts/coverage-gate.sh
+      - name: Build, sign and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          KEY_FILE="$RUNNER_TEMP/sparkle-ed-key"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          (umask 077; printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$KEY_FILE")
+          SPARKLE_ED_KEY_FILE="$KEY_FILE" scripts/release.sh "${GITHUB_REF_NAME#v}" --publish
