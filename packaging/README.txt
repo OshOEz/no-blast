@@ -13,7 +13,8 @@ GOOD TO KNOW
 - Your password always keeps working. If your face is not recognized, macOS just asks
   for the password as usual.
 - The camera runs only while a check is happening, and the camera light shows it.
-- A photo or a face on a screen is rejected by the liveness check.
+- Ordinary photos and faces on a phone screen are rejected by the liveness check. It uses a single camera
+  frame, so it is not proof against a well-made replay or mask.
 
 UNINSTALL
 Menu bar icon > Settings… > About > Uninstall…. That removes the app, your face
