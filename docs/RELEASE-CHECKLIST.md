@@ -22,5 +22,7 @@ Run before pushing a `vX.Y.Z` tag on `prod`. About 10 minutes.
 3. Lock screen: `⌃⌘Q`, look at the screen, it unlocks.
 4. Scan budget: lock, stay out of view ~1 min 30 s: the camera light turns on at most three times (~30 s each).
 5. Start typing your password during a scan: No Blast does not type over it.
-6. `git tag vX.Y.Z <prod commit> && git push origin vX.Y.Z`, then watch the Release workflow; check that the
-   release has `NoBlast-X.Y.Z.dmg`, `NoBlast.dmg` and `appcast.xml`.
+6. `gh secret list --env release --repo OshOEz/no-blast` lists `SPARKLE_ED_PRIVATE_KEY`.
+7. `git tag vX.Y.Z <prod commit> && git push origin vX.Y.Z`, then watch the Release workflow. It waits for your
+   approval (GitHub → Actions → the run → Review deployments → Approve) before it builds and publishes. After
+   approving, check that the release has `NoBlast-X.Y.Z.dmg`, `NoBlast.dmg` and `appcast.xml`.
